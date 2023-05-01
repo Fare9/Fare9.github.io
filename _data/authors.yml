@@ -1,0 +1,11 @@
+Eduardo Blazquez:
+  name      : "Eduardo Blázquez"
+  bio       : "Programmer, RE Engineer, Researcher, I do things."
+  avatar      : "/assets/images/fare9.jpeg"
+  links:
+    - label: "Email"
+      icon: "fas fa-fw fa-envelope-square"
+      url: "mailto:eblazquez.94@gmail.com"
+    - label: "Twitter"
+      icon: "fab fa-fw fa-twitter-square"
+      url: "https://twitter.com/Farenain"
