@@ -22,9 +22,7 @@ title: Eduardo Blázquez's Personal Webpage
 name: "Eduardo Blázquez"
 email: your-email@example.com
 description: >- # this means to ignore newlines until "baseurl:"
-  Write an awesome description for your new site here. You can edit this
-  line in _config.yml. It will appear in your document head meta (for
-  Google search results) and in your feed.xml site description.
+  Nothing to write here...
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://fare9.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: Farenain
@@ -33,9 +31,6 @@ github_username:  Fare9
 # Build settings
 #theme: minimal-mistakes-jekyll
 remote_theme: "mmistakes/minimal-mistakes@4.24.0"
-plugins:
-  - jekyll-feed
-  - jekyll-include-cache
 
 minimal_mistakes_skin: "dark" # "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum", "sunrise"
 
@@ -43,11 +38,39 @@ locale: "en"
 
 include: ["_pages", "_publications", "_posts"]
 
+# Social Sharing
+twitter:
+  username               : &twitter "Farenain"
+
+# Site Author
+author:
+  name          : *name
+  avatar        : "/assets/images/fare9.jpeg"
+  bio           : "PhD Student and Researcher at University Carlos III of Madrid"
+  location      : "Madrid, Spain"
+  links:
+    - label: "Twitter"
+      icon: "fab fa-fw fa-twitter-square"
+      url: "https://twitter.com/Farenain"
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/Fare9"
+
+# Site Footer
+footer:
+  links:
+    - label: "Twitter"
+      icon: "fab fa-fw fa-twitter-square"
+      url: "https://twitter.com/Farenain"
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/Fare9"
+
+# Collections
 collections:
   publications:
     output: true
     permalink: /:collection/:path/
-
 
 defaults:
   # _pages
@@ -66,3 +89,20 @@ defaults:
       layout: single
       author_profile: false
       share: true
+
+# Outputting
+permalink: /:categories/:title/
+
+plugins:
+  - jekyll-paginate
+  - jekyll-sitemap
+  - jekyll-gist
+  - jekyll-feed
+  - jekyll-include-cache
+
+# HTML Compression
+# - http://jch.penibelst.de/
+compress_html:
+  clippings: all
+  ignore:
+    envs: development
