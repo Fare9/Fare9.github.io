@@ -80,7 +80,6 @@ defaults:
     values:
       layout: single
       author_profile: true
-
   # _publications
   - scope:
       path: ""
@@ -89,9 +88,23 @@ defaults:
       layout: single
       author_profile: false
       share: true
+  # _posts
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: single
+      author_profile: true
+      read_time: false
+      comments: true
+      share: true
+      related: true
 
 # Outputting
 permalink: /:categories/:title/
+paginate: 5 # amount of posts to show
+paginate_path: /page:num/
+timezone: # http://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 plugins:
   - jekyll-paginate
