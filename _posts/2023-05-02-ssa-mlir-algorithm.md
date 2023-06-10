@@ -150,29 +150,45 @@ Once we have finished generating the CFG, we can start generating the terminal i
 
 For making easier to understand the problem and the algorithm, we have represented the cases in a few scenarios. We start with the simples case where we apply *local value numbering*, where we have a definition of a local value, and an instruction requiring using that same value in the same block (in the figures, the registers from the bytecode will be represented as *vX* and the values as *%X*, these values are not a one to one representation of the registers).
 
-![local value numbering](/assets/images/SSA_Algorithm/LocalValueNumbering.png)
+<figure>
+<a href="/assets/images/SSA_Algorithm/LocalValueNumbering.png"><img src="/assets/images/SSA_Algorithm/LocalValueNumbering.png"></a>
+<figcaption>Local Value Numbering.</figcaption>
+</figure>
 
 In this case, the first instruction defined the value *%0* in the IR, and store it as a definition for *v0* register. The next instruction uses the register *v0*, so we need to look for the value defined for that register. Luckily in this case, the value has been previously defined in the same block, so calling to *readLocalVariable*, we obtain the defined value.
 
 The next case is the simplest case of *global value numbering*, in the case we only have one predecessor, and the value we need was previously defined by that predecessor:
 
-![global value numbering simple case](/assets/images/SSA_Algorithm/GlobalValueNumbering1.png)
+<figure>
+<a href="/assets/images/SSA_Algorithm/GlobalValueNumbering1.png"><img src="/assets/images/SSA_Algorithm/GlobalValueNumbering1.png"></a>
+<figcaption>Global Value Numbering Simple Case.</figcaption>
+</figure>
 
 In this case, when the algorithm tries to obtain the definition of the needed value in the current basic block it fails, and have to call to *readLocalVariableRecursive*. In this case, we find that the value was defined in the previous block, then it is possible to create the parameter and assign it to the instruction, and record the value for the moment when we generate the terminal instructions, that will be once we have transformed all basic blocks to our MLIR Dialect.
 
 Now we will see a more complicated case. In this case, our immediate predecessor has not defined the required value, so it will have to look for the value on its own predecessor, this value will have to be propagated through basic block parameters and through terminal instructions.
 
-![global value numbering complicated](/assets/images/SSA_Algorithm/GlobalValueNumbering2.png)
+<figure>
+<a href="/assets/images/SSA_Algorithm/GlobalValueNumbering2.png"><img src="/assets/images/SSA_Algorithm/GlobalValueNumbering2.png"></a>
+<figcaption>Global Value Numbering Complicated Case.</figcaption>
+</figure>
+
 
 The process is similar to the simplest case, but because the value is not found in the predecessor, the predecessor block will have to set the Reg as *'required'*, and look for its value on its predecessor. Once we find it, the recursion stops and the algorithm starts propagating the value through the block parameters, and keeping track of them for later generating the terminal instructions.
 
 The next two figures represent two use cases, one is an *if-else* example where we can see that since the algorithm looks for the value in all the predecessors from a basic block, in the predecessor where the value is not defined, this will have to be propagated from previous basic blocks, allowing to retrieve all the possible previous values.
 
-![if else example](/assets/images/SSA_Algorithm/Example-if-else.png)
+<figure>
+<a href="/assets/images/SSA_Algorithm/Example-if-else.png"><img src="/assets/images/SSA_Algorithm/Example-if-else.png"></a>
+<figcaption>If-Else Example.</figcaption>
+</figure>
 
 The other example we find is the next, a *loop* where we could find that the *body* of the *loop* requires a value that was not defined by the predecessor. In this case, the predecessor (*BB1* in this case) will look for the value first on *BB0*, since looking for the value in its other predecessor (*BB2*) would create an infinite recursion problem. Since the value is propagated and created as a basic block parameter in *BB1*, *BB2* will obtain a correct value and infinite recursion is stopped here.
 
-![Loop example](/assets/images/SSA_Algorithm/ExampleLoop.png)
+<figure>
+<a href="/assets/images/SSA_Algorithm/ExampleLoop.png"><img src="/assets/images/SSA_Algorithm/ExampleLoop.png"></a>
+<figcaption>Loop Example.</figcaption>
+</figure>
 
 ## Clarification
 
