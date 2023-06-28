@@ -18,7 +18,7 @@ toc: true
 <a href="/assets/images/hex-ray-challenge/cover.png"><img src="/assets/images/hex-ray-challenge/cover.png"></a>
 </figure>
 
-Few weeks ago Robert Yates uploaded a [tweet](https://twitter.com/yates82/status/1662440679459500033), in this video a [challenge](https://hex-rays.com/blog/free-madame-de-maintenon-ctf-challenge/) by the company Hex-Rays with [Binary Ninja](https://binary.ninja/) and the plugin [SENinja](https://github.com/borzacchiello/seninja). So I thought about doing something similar but this time using [Triton](https://triton-library.github.io/) and after that using [TritonDSE](https://blog.quarkslab.com/introducing-tritondse-a-framework-for-dynamic-symbolic-execution-in-python.html). These are two libraries for doing Dynamic Symbolic Execution (DSE). Triton is written in C++ and it offers an API in Python for using it in an easy way, TritonDSE is a library written in Python that relies on Triton offering DSE capabilities in an easier way than Triton (also other useful capabilities like program loading). For the disassembly and the decompilation I will use [Ghidra](https://ghidra-sre.org/), an open source disassembler/decompiler written in Java released by the NSA.
+A few weeks ago, Robert Yates uploaded a [tweet](https://twitter.com/yates82/status/1662440679459500033) featuring a video solving a challenge by the company Hex-Rays with the use of [Binary Ninja](https://binary.ninja/) and the [SENinja](https://github.com/borzacchiello/seninja) plugin. Inspired by this, I decided to embark on a similar journey, but this time using [Triton](https://triton-library.github.io/) and later incorporating [TritonDSE](https://blog.quarkslab.com/introducing-tritondse-a-framework-for-dynamic-symbolic-execution-in-python.html). These two libraries provide powerful capabilities for Dynamic Symbolic Execution (DSE). Triton, written in C++, offers a Python API that makes it easy to work with. TritonDSE, on the other hand, is a Python library built on top of Triton, which provides DSE capabilities in a more accessible manner, along with other useful features such as program loading. For the disassembly and decompilation tasks, I will be using [Ghidra](https://ghidra-sre.org/), an open-source disassembler/decompiler written in Java and released by the NSA.
 
 ## Authors
 
@@ -26,38 +26,54 @@ Few weeks ago Robert Yates uploaded a [tweet](https://twitter.com/yates82/status
 
 ## The Challenge
 
-The challenge is an ELF binary for 64 bits dynamically linked with a size of 1,4 Mega bytes, we can obtain all this information with the next command:
+The challenge is an ELF binary for 64-bit architecture, dynamically linked, and has a size of 1.4 Mega bytes. We can obtain this information using the following command:
 
 ```console
-$ file challenge 
+$ file challenge
 challenge: ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=83db7b297901c743a71f43e813e3dc266245b220, for GNU/Linux 3.2.0, stripped
-$ ls -lah challenge 
--rwxrwxr-x 1 symbolic symbolic 1,4M may 17 09:55 challenge
+$ ls -lah challenge
+-rwxrwxr-x 1 symbolic symbolic 1.4M May 17 09:55 challenge
 ```
 
-The program needs one argument for running, so we will suppose that the program waits some kind of flag, and we have to find it and provide the correct flag for running the program. Let's give it a try, a first time we do not provide any argument, and we obtain a message asking for a password, and then we will provide any password, here I will just write part of the name of a song by *Rainbow*: *"Temple of the King"*. Next you can see what I get:
+The program requires one argument to run, so we assume that it expects a specific flag or input. Our task is to find the correct flag to successfully execute the program. Let's give it a try. When we run the program without providing any argument, we receive a message asking for a password. As an initial attempt, I'll enter part of the name of a song by Rainbow: "Temple of the King". Here's what I got:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/1.png"><img src="/assets/images/hex-ray-challenge/1.png"></a>
 <figcaption>Running the binary with a password, and with an incorrect password.</figcaption>
 </figure>
 
-As we can see, the program renders a PNG file, that just tells us that I'm going in the wrong way, so I need to look for the password in other place (or it can be the program doesn't like Dio's song...).
+From the program's output, we can see that it renders a PNG file, indicating that my initial approach was incorrect. It seems like I need to look for the password in a different place (or maybe the program just doesn't appreciate Dio's song...).
 
-Instead of doing analysis with other tools, I will just jump to open the binary in a disassembler, as I said at the beginning, I will use Ghidra for the purpose of this challenge.
+Instead of using other tools for analysis, I'll directly open the binary in a disassembler. As mentioned earlier, I'll be using Ghidra for this challenge.
 
 ### Analyzing the Challenge with Ghidra
 
-So for analyzing the binary I will use Ghidra's disassembler and decompiler, using both tools at same time is very useful, since some optimizations are applied to the decompiled code that help us to understand better what is happening, but as we will see, in the binary we can find some decryption loops that the decompiler cannot represent properly.
+To analyze the binary using Ghidra's disassembler and decompiler, we need to create a project in the tool. If you haven't already done so, you can follow the instructions in the Ghidra documentation or refer to beginner's tutorials to learn how to create a project (or if you want to dig deeper, I recommend you any of the next books [Ghidra Software Reverse Engineering for Beginners](https://www.packtpub.com/product/ghidra-software-reverse-engineering-for-beginners/9781800207974), or [The Ghidra Book: The Definitive Guide](https://www.ghidrabook.com/)).
 
-First of all in Ghidra we have to create a project, the project will contain our disassembled binaries, in my case I created one already, but you can probably look some basic tutorial from Ghidra for learning how to do this (or if you want to dig deeper, I recommend you any of the next books [Ghidra Software Reverse Engineering for Beginners](https://www.packtpub.com/product/ghidra-software-reverse-engineering-for-beginners/9781800207974), or [The Ghidra Book: The Definitive Guide](https://www.ghidrabook.com/)). Once you have created the project, and loaded the binary you'll get a screen like the next:
+Once the project is created, we can load the binary into Ghidra. This can be done by selecting "File" -> "Import File" and choosing the binary file. Ghidra will analyze the binary and present you with the main project screen.
+
+In the project screen, you will see various panels and tabs that provide different views of the disassembled code, decompiled code, and other program information. The main panel typically displays the disassembled code, and you can navigate through the different functions and sections of the binary.
+
+To gain a better understanding of the code, we can use the decompiler view alongside the disassembler. The decompiler translates the assembly code into a higher-level language representation, making it easier to comprehend the logic of the program. You can switch to the decompiler view by selecting the appropriate tab or panel in Ghidra.
+
+Using both the disassembler and decompiler views, we can examine the code, identify important functions or operations related to password handling, and trace the program's execution flow.
+
+It's worth mentioning that while the decompiler provides a more readable representation, there may be cases where it struggles to accurately represent complex or obfuscated code. In such cases, referring back to the disassembled code can provide additional insights.
+
+By carefully analyzing the disassembled and decompiled code, we can uncover the password validation mechanism and continue our journey to solve the challenge.
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/2.png"><img src="/assets/images/hex-ray-challenge/2.png"></a>
 <figcaption>Ghidra project and loaded binary.</figcaption>
 </figure>
 
-If we click on the binary, since Ghidra obtained the address of the `main` function (the first function from the binary written by the programmer), but in any other case we would just jump to the `entry` function, which is the principal function generated by the compiler, and the one where the `e_entry` value from ELF's header point, this function will call to the function `__libc_start_main`, and its first argument (the one loaded into `RDI`) will be the `main` function:
+When we open the binary in Ghidra and click on it, Ghidra will automatically take us to the `main` function. The `main` function is typically the entry point of the program, where the execution starts.
+
+However, if we were analyzing a binary where the entry point is not the `main` function, Ghidra would instead take us to the `entry` function. The `entry` function is a special function generated by the compiler and serves as the initial entry point specified in the ELF header (`e_entry` value).
+
+In the `entry` function, we would usually see a call to the `__libc_start_main` function. The `__libc_start_main` function is part of the C runtime library and sets up the necessary environment for executing the program. The first argument (`RDI` register) passed to `__libc_start_main` is typically the address of the `main` function.
+
+By following the function calls and analyzing the code, we can understand the flow of the program and identify the relevant parts for our analysis, such as the password validation logic or any other functionality we are interested in.
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/3.png"><img src="/assets/images/hex-ray-challenge/3.png"></a>
@@ -78,7 +94,7 @@ If we double click into the word `main` we will directly go to the `main` functi
 
 If later you want to rename variables remember that in Ghidra you have to click on variable's name, and then press `L`, or for leaving a comment, you have to press `;`.
 
-If we skip the prologue of the function, we will jump directly to a few calls to what it looks the API from the [*SDL*](https://www.libsdl.org/) library, this library is used to provide access to some hardware and graphics, useful for rendering images and commonly used for video games. We can also see at the beginning the check of the `argc` value, this is checked to be greater than 1, in other case, the program jumps to the error code. Next I leave the assembly code, and also the decompiled code from Ghidra with some comments, and some variables already renamed:
+By skipping the prologue of the function, we are able to directly encounter a few calls to what appears to be the API of the [*SDL*](https://www.libsdl.org/) library. This library is utilized to provide access to hardware and graphics functionalities, making it particularly useful for rendering images and commonly employed in video games. Additionally, we observe the initial check of the `argc` value, ensuring that it is greater than 1. Otherwise, the program proceeds to the error code. Below, you'll find both the assembly code and the decompiled code from Ghidra, accompanied by comments and renamed variables:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/6.png"><img src="/assets/images/hex-ray-challenge/6.png"></a>
@@ -90,7 +106,7 @@ If we skip the prologue of the function, we will jump directly to a few calls to
 <figcaption>Beginning part of the function in pseudo-C.</figcaption>
 </figure>
 
-If we continue analyzing the code, we reach a part which assembly highly optimizes, but in the pseudo-code from Ghidra, it looks like an initialization of a big array. The code maybe was generated with a `memset`, but internally the compiler will generate an assembly code which uses the register `xmm0`, this register is set to 0 with a `xor` operation, and then will be used to initialize the first 16 bytes of a buffer. Also we will see an initialization to 0 from the byte 16 to 24. Finally a call to `strncpy` is done with a pointer to `argv[1]` to the initialized pointer. So if we think it a little bit, we can infer this is an initialization of a local buffer, and a copy from the `argv[1]` to that internal buffer. We can set the type of the buffer with Ghidra pressing the key `Y`, and then selecting the type, I chose the type `uint[0x18]`. We could even implement it easily in C:
+As we further analyze the code, we come across a section that is highly optimized in assembly, but in the pseudo-code representation provided by Ghidra, it appears to be the initialization of a large array. The code might have been generated using a `memset` function, but internally the compiler generates assembly code that utilizes the `xmm0` register. This register is set to 0 using an `xor` operation and then used to initialize the first 16 bytes of a buffer. Additionally, we observe an initialization of byte 16 to 24 to 0. Finally, a call to `strncpy` is made, copying the contents from `argv[1]` to the initialized buffer. By considering these details, we can infer that this section is responsible for initializing a local buffer and copying the contents of `argv[1]` into it. In Ghidra, we can set the type of the buffer by pressing the 'Y' key and selecting the appropriate type. In my case, I chose the type `uint[0x18]`. We could even easily implement it in C:
 
 ```c
 int main(int argc, char **argv)
@@ -102,7 +118,7 @@ int main(int argc, char **argv)
 }
 ```
 
-But with Ghidra we will find something like the next pictures:
+But with Ghidra we will find something like the next:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/8.png"><img src="/assets/images/hex-ray-challenge/8.png"></a>
@@ -114,13 +130,13 @@ But with Ghidra we will find something like the next pictures:
 <figcaption>Initialization of the local buffer in pseudo-C.</figcaption>
 </figure>
 
-### Starting with the Maths
+### Getting Started with the Mathematics
 
-Since I'm using a DSE engine, with a solver like Z3, readers probably already have realized that in this challenge we will find some math equations to solve, and probably looking for a solution manually would be costly, and highly difficult. Here we will see the different equations from the program, and we will try to represent them, we will see why these equations are important for solving the challenge.
+Given that I'm using a DSE engine with a solver like Z3, it's likely that readers have already realized that this challenge involves solving mathematical equations. It's important to note that attempting to solve these equations manually would be both time-consuming and extremely difficult. In this section, we will examine the various equations present in the program and attempt to represent them. Through this exploration, we will gain a deeper understanding of why these equations play a crucial role in solving the challenge.
 
-#### First equation
+#### Equation 1
 
-After the call to `strncpy` we find the first equation to solve, and also the first constraints that I will use to feed Z3 in order to properly solve the challenge. Next pictures represent this first equation:
+Following the `strncpy` call, we encounter the first equation that needs to be solved. Additionally, these initial constraints will be used to provide input to Z3, ensuring the challenge is correctly solved. The following images depict the first equation:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/10.png"><img src="/assets/images/hex-ray-challenge/10.png"></a>
@@ -140,11 +156,11 @@ We have the first equation with the first constraint in this pseudo code:
 
 <br>
 
-#### Second equation
+#### Equation 2
 
-So we have the first constraint, which it means that for the previous operation, Z3 will have to choose values that satisfy that requirement of obtaining the result `0x1cd4`.
+So, we have established the first constraint, which means that Z3 needs to select values that fulfill the condition of obtaining the result `0x1cd4` for the previous operation.
 
-Then we can move to the second equation, and the second constraint, which is right below to the code previously seen.
+Now, let's move on to the second equation and the corresponding constraint, which is located right below the previously discussed code.
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/12.png"><img src="/assets/images/hex-ray-challenge/12.png"></a>
@@ -172,9 +188,9 @@ Again, once we feed Z3 with this constrait, it will have to find another 4 value
 </figure>
 
 
-#### Third equation and first decryption loop
+#### Equation 3 and first decryption loop
 
-We will move following the `JZ` instruction and we will see the third equation:
+We will move following the `JZ` instruction and we can see the third equation:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/15.png"><img src="/assets/images/hex-ray-challenge/15.png"></a>
@@ -189,7 +205,9 @@ password[16:24] &oplus; password[0:8] = 0xa04233a475d1b72
 
 <br>
 
-Again we will use this as a constraint for the used bytes for Z3, and again if this solution is not met, we would jump to the error code, but in case we gave correct values, we would enter in the first decryption loop. The challenge contains an encrypted PNG that will be decrypted using the provided password, so even if we try to bypass the jump instructions without solving correctly the challenge, we would not obtain the correct PNG. If we reached this point without bypassing jumps, and we provided the correct password until now we will reach the next code:
+Once again, we will utilize this equation as a constraint for the bytes used by Z3. If this condition is not satisfied, the program would branch to the error code. However, if we provide the correct values, we would enter the first decryption loop.
+
+The challenge includes an encrypted PNG file that will be decrypted using the provided password. Even if we attempt to bypass the jump instructions without correctly solving the challenge, we will not obtain the correct PNG. Assuming we have reached this point without bypassing any jumps and have provided the correct password so far, we will encounter the following code:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/16.png"><img src="/assets/images/hex-ray-challenge/16.png"></a>
@@ -201,11 +219,11 @@ Again we will use this as a constraint for the used bytes for Z3, and again if t
 <figcaption>First decryption loop in pseudo-C.</figcaption>
 </figure>
 
-While Ghidra is able to recover a decompiled code, it looks a little strange, and applies some difficult to understand mathematical operations, in this case, I recommend following the assembly code, since I think is cleaner, but mostly the algorithm is a loop which applies a decryption operation, using part of our password as key, and this is what it makes the challenge harder, since we have to find a proper password that correctly decrypts the PNG file. **Let's try to keep in mind the addresses of the decryption loop, since it's not interesting for the symbolic execution, and bypassing it we will save time and memory!**
+Although Ghidra is capable of generating decompiled code, it may appear somewhat unconventional and involve complex mathematical operations. In this case, I suggest referring to the assembly code, which tends to be clearer. The algorithm consists of a loop that performs a decryption operation using a portion of our password as the key. This aspect of the challenge makes it more difficult, as we need to find the correct password that successfully decrypts the PNG file. **It's important to remember the addresses of the decryption loop, as it is not relevant for symbolic execution, and bypassing it will save time and memory!**
 
-#### Fourth equation and second decryption loop
+#### Equation 4 and second decryption loop
 
-Once we step out the the first decryption loop, we will have the fourth equation in the code, we can see its assembly and its pseudo-C in the next pictures
+Once we step out the first decryption loop, we will have the fourth equation in the code, we can see its assembly and its pseudo-C in the next pictures:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/18.png"><img src="/assets/images/hex-ray-challenge/18.png"></a>
@@ -217,7 +235,7 @@ Once we step out the the first decryption loop, we will have the fourth equation
 <figcaption>Fourth equation and constraint in pseudo-C.</figcaption>
 </figure>
 
-Again we will provide this as a constraint to Z3 in order to obtain more parts from the password, and as part of that, the correct password. I write next the equation used in this part of the code:
+Once again, we will use this equation as a constraint for Z3 to derive additional portions of the password and ultimately obtain the correct password. Here is the equation used in this section of the code:
 
 <h:math>
 ((password[0:4] * 2 + password[20:24]) - (password[8:12]*4)) - (password[16:20] >> 3) - (password[4:8] >> 3) = 0x4b5469c
@@ -225,7 +243,7 @@ Again we will provide this as a constraint to Z3 in order to obtain more parts f
 
 <br>
 
-As before, in case the calculus with the provided password doesn't give as result the value `0x4b5469c`, we will go to the error code that just show the error PNG, but in case the correct password is provided, we directly jump to the second decryption loop.
+Similarly to the previous sections, if the computation using the provided password does not yield the value `0x4b5469c`, we will be redirected to the error code, which displays an error PNG. However, if the correct password is supplied, we will directly jump to the second decryption loop.
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/20.png"><img src="/assets/images/hex-ray-challenge/20.png"></a>
@@ -254,7 +272,7 @@ Once we have finished the second decryption loop we arrive to the final check ap
 <figcaption>Last equation in pseudo-C.</figcaption>
 </figure>
 
-And here in a more text format as before:
+And here in a mathematical format as before:
 
 <h:math>
 password[16:24] &oplus; passwords[8:16] = 0x231f0b21595d0455
@@ -274,7 +292,7 @@ With this part we would have finished the analysis of the equations and the cons
 
 This part of the code just apply a final decryption, and finally it shows the image to the user, so we do not need to know anything more from the challenge for solving it.
 
-If we present all the equations together we get the next:
+Here are all the equations combined:
 
 <h:math>
 (password[16:18] + password[22:24]) - (password[8:10] + password[14:16]) = 0x1cd4
@@ -290,7 +308,7 @@ password[16:24] &oplus; passwords[8:16] = 0x231f0b21595d0455
 
 <br>
 
-With Z3 we have to solve all these equations and check if there's a model that can meet al these constraints. Let's directly dig into the analysis with Triton, and after that with TritonDSE, I will cover both scripts, and show how we can use both frameworks for obtaining the password.
+These equations represent the constraints that need to be satisfied in order to find the correct password for the challenge. By solving these equations, we can obtain the values for the corresponding parts of the password that will successfully decrypt the PNG file.
 
 ## Solving the Challenge With Triton
 
@@ -298,26 +316,26 @@ With Z3 we have to solve all these equations and check if there's a model that c
 <a href="/assets/images/hex-ray-challenge/triton.png"><img src="/assets/images/hex-ray-challenge/triton.png" style="background-color:white;"></a>
 </figure>
 
-As stated on its [website](https://triton-library.github.io/): *Triton is a dynamic binary analysis library. It provides internal components that allow you to build your program analysis tools, automate reverse engineering, perform software verification or just emulate code.*
+As stated on its [website](https://triton-library.github.io/), Triton is a dynamic binary analysis library that provides internal components to build program analysis tools, automate reverse engineering, perform software verification, or emulate code.
 
-In the web site we can also find the architecture of Triton:
+The website also presents the architecture of Triton, which includes the following components:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/triton_arch.png"><img src="/assets/images/hex-ray-challenge/triton_arch.png"></a>
 </figure>
 
-What we will do with Triton is emulating the code, and set part of that memory as symbolic. Once Triton runs the code from the program, it will start creating an expression using the symbolic variables, from this expression we can retrieve an Abstract Syntax Tree (AST) representation. We will apply different constraints to the expressions, and then use Z3 for solving it and obtaining the password. We will go over the next steps:
+What we will do with Triton is emulate the code and set part of the memory as symbolic. When Triton runs the program's code, it creates expressions using the symbolic variables, and we can retrieve an Abstract Syntax Tree (AST) representation from these expressions. We will apply different constraints to the expressions and use Z3 to solve them and obtain the password. The following steps will be followed:
 
-1. Create hooks for different library functions not implemented in Triton.
-2. Analyze the binary with Lief.
+1. Create hooks for different library functions that are not implemented in Triton.
+2. Analyze the binary using Lief.
 3. Load the binary.
-4. Emulate the binary, here we will apply library hooks and our own hooks.
-5. Apply constraints in certain points.
-6. Solve the final expression with the constraints
+4. Emulate the binary, applying library hooks and our own hooks.
+5. Apply constraints at specific points.
+6. Solve the final expression with the constraints.
 
-In this part of the blog I will copy different part of the scripts, but you can find the code of the script in [here](https://github.com/Fare9/My-Symbolic-Execution/blob/master/IDA-challenge/free-madame-de-maintenon-challenge/triton_solver.py).
+In this part of the blog, I will include excerpts from the scripts. You can find the complete code of the script [here](https://github.com/Fare9/My-Symbolic-Execution/blob/master/IDA-challenge/free-madame-de-maintenon-challenge/triton_solver.py).
 
-Triton is a library focused on the analysis part, so things like loading the binary, applying relocations, or allocating the memory are not automatically done by the library, and are left to the analyst. Also the implementation of standard functions will be our work, but we can go over a few examples from Triton's web page. Here we will see some of these functions, and then we will go with the code for solving the challenge.
+Triton is primarily focused on analysis, so tasks like loading the binary, applying relocations, or allocating memory are not automatically handled by the library and are left to the analyst. The implementation of standard functions is also the analyst's responsibility. However, Triton provides examples of these functions on its website. In the following sections, we will explore some of these functions and then proceed with the code for solving the challenge.
 
 
 ### Creating Hooks for Library Functions
@@ -376,7 +394,7 @@ def libc_start_main(ctx):
     return (CONCRETE, 0)
 ```
 
-We will also create a hook for the function `strncpy`, the function is used to copy the `argv[1]` into a local buffer in the stack, this local buffer represents the password provided by the user. Since this buffer is the one we want to know the different values, we will set this buffer as *symbolic* in order to apply symbolic execution, and obtain the different expressions.
+We will also create a hook for the `strncpy` function. This function is used to copy the argument `argv[1]` into a local buffer in the stack, which represents the password provided by the user. Since we want to calculate this buffer, we will set it as *symbolic*. This will allow us to apply symbolic execution and obtain the different expressions associated with it.
 
 ```python
 def strncpy(triton_ctx):
@@ -414,9 +432,9 @@ def strncpy(triton_ctx):
     return (CONCRETE, 0x18)
 ```
 
-Here I have push some constraints already, since we want a password with ANSII values, we will add two constraints for each value, it must be bigger than a minimum value from ANSII characters, and lower-equals to a max value from those ANSII characters. For setting the memory as symbolic we use `symbolizeMemory`, and for creating a constraint we use `pushPathConstraint`. Since the symbolic execution can be expensive, we concretize that memory with a concrete value in this case value `A`, this is what is called *Concolic Execution*.
+HHere I have already added some constraints. Since we want a password with ASCII values, we will add two constraints for each value. The value must be greater than or equal to the minimum ASCII value for characters, and less than or equal to the maximum ASCII value for characters. To set the memory as symbolic, we use `symbolizeMemory`, and to create a constraint, we use `pushPathConstraint`. As symbolic execution can be computationally expensive, we concretize that memory with a concrete value, in this case, the value `A`. This technique is known as *Concolic Execution*.
 
-Finally we will have a structure that we will use to call these hooks, together with a function that will call the hooks during emulation, it is the next code:
+Finally, we will have a structure that we will use to call these hooks, along with a function that will invoke the hooks during emulation. The code for this is as follows:
 
 ```python
 # the third value will be assigned during relocation.
@@ -457,7 +475,7 @@ def hookingHandler(ctx):
 
 ### Analyzing and Loading Binary
 
-For obtaining some data from the binary, we will use *Lief* a parser library that will allow us to obtain information like sections from the binary, relocations, and so on. Then we will load the binary into memory for doing the analysis. First, we will write some constants with the memory structure we want:
+For obtaining binary structure, we will use *Lief*, a parser library that will allow us to obtain information like sections from the binary, relocations, and so on. Then we will load the binary into memory for doing the analysis. First, we will write some constants with the memory structure we want for the binary:
 
 ```python
 # Memory mapping
@@ -507,7 +525,7 @@ def makeRelocation(ctx, binary):
 
 ### Emulate the Binary
 
-First of all we can create a `run` function that will initialize the stack registers (`RBP` and `RSP`) creating a kind of *fake stack*, and that function will call the emulation one:
+First of all we can create a `run` function that will initialize the stack registers (`RBP` and `RSP`) creating a *fake stack*, and that function will call the emulation one:
 
 ```python
 def run(triton_ctx, binary):
@@ -524,7 +542,14 @@ def run(triton_ctx, binary):
     print("Time emulation: %.2f milliseconds" % ((d2-d1)*1000))
 ```
 
-Finally, the emulation function. This function will follow the next process, it will read the opcodes from the memory pointed by the current `program counter` register, it will disassembly that instruction, then we will tell Triton to apply the semantic of the instruction calling its function `processing`, and finally we will advance the pointer to the next instruction.
+Finally, let's take a look at the emulation function. This function follows the following process:
+
+1. It reads the opcodes from the memory pointed to by the current `program counter` register.
+2. It disassembles the instruction.
+3. It tells Triton to apply the semantics of the instruction by calling its `processing` function.
+4. It advances the pointer to the next instruction.
+
+Here is the code for the emulation function:
 
 ```python
 def emulate(ctx, pc):
@@ -549,11 +574,11 @@ def emulate(ctx, pc):
         pc = ctx.getConcreteRegisterValue(ctx.registers.rip)
 ```
 
-Previous code represents a common emulation function for Triton, this body of function can be used almost in any analysis. Before moving to the next instruction we called `hookingHandler`, a function that will call our hooks. I left a comment where we can insert some logic of analysis, apply symbolization of registers or memory, apply constraints and finally solve the expressions for getting a model.
+Previous code represents a common emulation function for Triton, this body of function can be used almost in any analysis. Before moving to the next instruction we called `hookingHandler`, a function that will call our own hooks. I left a comment where we can insert some logic of analysis, apply symbolization of registers or memory, apply constraints and finally solve the expressions for getting a model.
 
 ### Apply Constraints
 
-Before I didn't paste the whole code for `emulate`, but I will paste here and I will give some explanations more:
+Before I didn't paste the whole code for `emulate` function, but I will paste here and I will give some explanations more:
 
 ```python
 def emulate(ctx, pc):
@@ -621,7 +646,7 @@ def emulate(ctx, pc):
         pc = ctx.getConcreteRegisterValue(ctx.registers.rip)
 ```
 
-First of all, as I said during the analysis of the binary, we will avoid two things, functions that are not implemented, and are not important for the analysis, we annotated the addresses of the calls, and we skipped them with the next code:
+First of all, as I said during the analysis of the binary, we will avoid two different codes, functions that are not implemented, and are not important for the analysis, we annotated the addresses of the calls, and we skipped them with the next code:
 
 ```python
 # call a not implemented function, jump over it
@@ -633,7 +658,7 @@ if pc in [0x0000124a, 0x00001254, 0x0000126d]:
     continue
 ```
 
-FInally, another important part were the decryption loops, I also said we can avoid these decryption loops since are not important for the analysis, and would present a time and memory consumption:
+Finally, let's discuss another important part: the decryption loops. As mentioned before, we can actually avoid these decryption loops since they are not crucial for the analysis. Skipping them will help save time and memory during the symbolic execution.
 
 ```python
 # avoid decryption loops
@@ -649,7 +674,7 @@ if avoid_loop:
     continue
 ```
 
-Finally, we have the next code:
+For finishing explaining the code, we have the next snippet:
 
 ```python
 # conditions
@@ -664,7 +689,7 @@ for val in check_register_value:
             solver_check(ctx, val[1], val[2])
 ```
 
-This code will check the address, and it will call `solver_check`, in this function we will apply the constraints, the second parameter of the function is a register from and the third parameter a value, both used for applying a constraint:
+This code will check the address, and it will call `solver_check`, in this function we will apply the constraints, the second parameter of the function is a register and the third parameter a value, both used for applying a constraint:
 
 ```python
 def solver_check(ctx, register, CHECK_VALUE, solve = False, show_ast = False):
@@ -691,7 +716,7 @@ The previous code will apply the different constraints once the execution reach 
 
 ### Solve the final expression with the constraints
 
-We are almost over with Triton, in `solver_check` I didn't past some code that will run if the parameter `solve` is set to `True`, this part of the code will apply a final constraint, and will get the expression from the AST, then it will try to solve it with Z3, and obtain a model:
+We are almost done with Triton. In the `solver_check` function, I didn't past some code that will execute if the `solve` parameter is set to `True`. This part of the code applies a final constraint, retrieves the expression from the Abstract Syntax Tree (AST), attempts to solve it using Z3, and obtains a model if successful.
 
 ```python
 if (solve):
@@ -714,7 +739,7 @@ if (solve):
     print("------------------------------------------\n\n")
 ```
 
-Using the previous code, we obtain the expression and tries to get a model that solves the obtained expression with the different constraints. If we obtain each one of the values from the solution we will get something like this:
+Using the previous code, we obtain the expression and attempt to obtain a model that satisfies the constraints. If we successfully obtain a model, we can retrieve the values for each variable in the solution. The obtained values may look something like this:
 
 ```console
 $ python3 triton_solver.py
@@ -788,7 +813,7 @@ Flag=Fr33_M4dam3-De/M4inten0n
 ------------------------------------------
 ```
 
-Finally we obtain a password or flag: *Fr33_M4dam3-De/M4inten0n*. Now let's try running it as parameter for our challenge:
+Finally we obtain a password: *Fr33_M4dam3-De/M4inten0n*. Now let's try running it as parameter for our challenge:
 
 <figure>
 <a href="/assets/images/hex-ray-challenge/26.png"><img src="/assets/images/hex-ray-challenge/26.png"></a>
@@ -797,17 +822,17 @@ Finally we obtain a password or flag: *Fr33_M4dam3-De/M4inten0n*. Now let's try 
 
 ## Solving the Challenge With TritonDSE
 
-TritonDSE is a library built on top of Triton, it provides a more high-level program exploration and analysis primitives as stated on Quarkslab [post](https://blog.quarkslab.com/introducing-tritondse-a-framework-for-dynamic-symbolic-execution-in-python.html), it offers a a `callback manager` that allows implementing different hooking methods. TritonDSE offers a SymbolicExplorator that will try to do path exploration generating new values for going over the different branches of the code. Another good point is that TritonDSE already loads the binary by itself, and it contains some API functions from `libc` already implemented, making analysts work easier.
+TritonDSE is a library built on top of Triton. It provides higher-level program exploration and analysis primitives, as stated in the Quarkslab post. It offers a `callback manager` that allows for the implementation of different hooking methods. TritonDSE includes a SymbolicExplorator that performs path exploration by generating new values to traverse the various branches of the code. Another advantage is that TritonDSE automatically loads the binary itself and already implements some API functions from `libc`, making the work of analysts easier.
 
-The library was released recently, and it can present some issues yet, but it looks very promising for doing binary analysis. Sadly I didn't take too much time for doing the challenge, so probably I didn't use TritonDSE properly, in any case, I will show my solution using TritonDSE, and probably in the future once I learn more about it and I will improve the script to solve the challenge in a more automatic way. This time I reduce a lot the number of steps so I will explain the solution only on three steps:
+Although the library was recently released and may still have some issues, it shows great promise for binary analysis. Unfortunately, due to time constraints, I wasn't able to fully utilize TritonDSE for the challenge. Nonetheless, I will present my solution using TritonDSE and plan to enhance the script in the future as I learn more about it, aiming to solve the challenge in a more automated manner. For now, I will provide a simplified explanation in three steps:
 
-1. Load binary (create starting values, set callbacks and run executor)
-2. Skip not emulated functions, loops and set bytes constraints.
+1. Load the binary (create initial values, set callbacks, and run the executor).
+2. Skip non-emulated functions and loops, and set byte constraints.
 3. Set constraints and solve the challenge.
 
 ### Load Binary, configure starting values, configure callbacks and Run!
 
-The process of loading the binary. and configure some values or callbacks is much easier with TritonDSE since it abstracts many of the internals from Triton. We load the binary calling to the function `Program` and giving the path to the file as argument. Then we can generate the arguments of the program as a `Seed` object, that later will be given as parameter to the `SymbolicExecutor`. This `SymbolicExecutor` object will get the `load` the `Program` object, it also contains a `callback_manager` where we can register the different callbacks, I recommend going through the documentation for understanding all possible callbacks. In my case I only used one callback before each run instruction, and one callback after running each instruction. Next is the `main` function from my script:
+The process of loading the binary and configuring values or callbacks becomes much easier with TritonDSE as it abstracts many of the internal details of Triton. We load the binary by calling the `Program` function and providing the file path as an argument. Then, we can generate the program arguments as a `Seed` object, which will later be passed as a parameter to the `SymbolicExecutor`. The `SymbolicExecutor` object will load the `Program` object and also contains a `callback_manager` where we can register different callbacks. I recommend referring to the documentation to understand all the available callbacks. In my case, I only used one callback before each run instruction and one callback after running each instruction. Here is the `main` function from my script:
 
 ```python
 def main():
@@ -833,13 +858,13 @@ def main():
     executor.run()
 ```
 
-As you can see the code is pretty straightforward which is nice from the point of view of an analysis, so we do not need to write many lines of code for loading a program, and apply relocations, etc.
+As you can see, the code is pretty straightforward, which is nice from an analysis perspective. We don't need to write many lines of code to load a program and apply relocations, etc.
 
 ### Skip not emulated functions, loops and set bytes constraints
 
 I've found that if I try to skip a function in a *pre* callback, or in the hook of an `API` call, the program crashed or it didn't work. In the case of the `API` calls, it crashes because the `__default_stub` function is called when a call to a not supported `API` is run, and the program tries to obtain an address using the `program_counter`, you can find the code [here](https://github.com/quarkslab/tritondse/blob/main/tritondse/symbolic_executor.py#L496C9-L496C16). But because in the hook of the `API` I modify the `RIP` register, the value accessed in Python's map doesn't exist and program crashes.
 
-As I did with Triton's code, for skipping a function, what I do is wait until the `call` instruction is run, and then I recover the return address into `RIP` register, and I fix stack pointer `RSP` for cleaning up the stack. In the case of the decryption loops, I just modify the `RIP` register, and set its address to the address after the decryption loop. Finally, when the call to `strncpy` has finished, I push the ASCII constraints into each byte from the `argv[1]` value, I use the variable `MEM_ADDRESS` which holds `argv[1]` address, in next section I show where this variable is written.
+In my implementation, similar to how I handled Triton's code, I have a mechanism to skip functions. I wait for the execution of the `call` instruction and then retrieve the return address stored in the `RIP` register. I also adjust the stack pointer `RSP` to clean up the stack. As for the decryption loops, I simply modify the `RIP` register and set it to the address following the decryption loop. After the `strncpy` call is completed, I apply ASCII constraints to each byte of the `argv[1]` value. The memory address of `argv[1]` is stored in the variable `MEM_ADDRESS`, and I will explain where this variable is written in the next section.
 
 ```python
 def skip(se: SymbolicExecutor, pstate: ProcessState, inst: Instruction):
@@ -873,7 +898,7 @@ def skip(se: SymbolicExecutor, pstate: ProcessState, inst: Instruction):
 
 ### Set constraints and solve the challenge.
 
-Finally, we have the callback run before each instruction. In this callback I will push different constraints in the expressions, and once we reach the last comparison, I will push the last constraint, and solve the the challenge looking for a model that meet all the expressions. As I previously said, I also store the address from `argv[1]` into the variable `MEM_ADDRESS`, this is done in the call to `strncpy` where the address is one of the parameters.
+Finally, we have the callback that runs before each instruction. In this callback, I push various constraints into the expressions. Once we reach the final comparison, I push the last constraint and solve the challenge by searching for a model that satisfies all the expressions. As mentioned earlier, I also store the address of `argv[1]` in the `MEM_ADDRESS` variable. This is done during the `strncpy` call, where the address is one of the parameters.
 
 ```python
 
@@ -928,7 +953,7 @@ def trace_inst(se: SymbolicExecutor, pstate: ProcessState, inst: Instruction):
             print(status.name)
 ```
 
-The structure `check_register_value` is pretty similar to the one shown in Triton's part, and the code is pretty similar. In case the program counter address is one of the one from `check_register_value`, we push a new constraint where the given register must be the same to the provided value, then we set `ZF` (zero flag) to 1, so the comparison will be true. Finally, if the address is the last condition, we push a final constraint and solve the expression as I did before.
+The structure `check_register_value` is pretty similar to the one shown in Triton's part, and the code is similar too. In case the program counter value is one from `check_register_value`, we push a new constraint where the given register must be the same to the provided value, then we set `ZF` (zero flag) to 1, so the comparison will be true. Finally, if the address is the last condition, we push a final constraint and solve the expression as I did before.
 
 If we run the script, we will get the next output:
 
