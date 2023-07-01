@@ -966,6 +966,203 @@ As we can see, the output is similar to the previous one from Triton's script bu
 
 You can find the full script for this challenge in [here](https://github.com/Fare9/My-Symbolic-Execution/blob/master/IDA-challenge/free-madame-de-maintenon-challenge/tritondse_solver.py).
 
+
+## Using Z3 Together with Triton
+
+This part will conclude the solution of the challenge, as a way to start learning about Triton. In this part of the post, I will use an external tool for solving the challenge, the script this time will directly use Z3, instead of calling it through Triton. The idea for this, as well as most of the code comes from the solution for *HackCon2016* in Triton's repository: [script](https://github.com/JonathanSalwan/Triton/blob/master/src/examples/python/ctf-writeups/hackcon-2016-angry-reverser/solve.py).
+
+Internally Triton will use Z3 or Bitwuzla for solving the expressions, but you can directly use a tool like Z3 as a python library in the script. For using Z3 we need to prepare an expression in SMT format that Z3 can parse, and for doing that we will have two auxiliary functions:
+
+```python
+def getVarSyntax(ctx):
+    s = str()
+    ast = ctx.getAstContext()
+    for k, v in list(ctx.getSymbolicVariables().items()):
+        s += str(ast.declare(ast.variable(v))) + '\n'
+    return s
+
+def getSSA(ctx, expr):
+    s = str()
+    # current AST of the program
+    ast = ctx.getAstContext()
+    # generate an IR in SSA from the expression
+    ssa = ctx.sliceExpressions(expr)
+    for k, v in sorted(ssa.items())[:-1]:
+        s += str(v) + '\n'
+    s += str(ast.assert_(expr.getAst())) + '\n'
+    return s
+```
+
+In previous snippet we have two functions, `getVarSyntax` will generate all the variables for Z3 based on the symbolic variables from Triton, the output from the function is an string where each line has the next format:
+
+```
+(declare-fun <symbolic_var_N> () (_ BitVec <size in bits>))
+```
+
+The other function `getSSA`, will get the expression given as parameter, but this time in SMT format with Static Single-Assignment (SSA), this kind of representation is used in compilers' IRs, where each variable is just assigned once. The format of the output is the next one:
+
+```
+(define-fun ref!269 () (_ BitVec 8) SymVar_8) ; Byte reference
+(define-fun ref!271 () (_ BitVec 8) SymVar_9) ; Byte reference
+(define-fun ref!281 () (_ BitVec 8) SymVar_14) ; Byte reference
+(define-fun ref!283 () (_ BitVec 8) SymVar_15) ; Byte reference
+(define-fun ref!285 () (_ BitVec 8) SymVar_16) ; Byte reference
+(define-fun ref!287 () (_ BitVec 8) SymVar_17) ; Byte reference
+(define-fun ref!297 () (_ BitVec 8) SymVar_22) ; Byte reference
+(define-fun ref!299 () (_ BitVec 8) SymVar_23) ; Byte reference
+(define-fun ref!300 () (_ BitVec 16) (concat ref!287 ref!285)) ; Extended part - Extended part - MOVZX operation
+(define-fun ref!301 () (_ BitVec 32) ((_ zero_extend 16) ref!300)) ; Extended part - MOVZX operation
+(define-fun ref!304 () (_ BitVec 16) (concat ref!299 ref!297)) ; Extended part - Extended part - MOVZX operation
+(define-fun ref!305 () (_ BitVec 32) ((_ zero_extend 16) ref!304)) ; Extended part - MOVZX operation
+(define-fun ref!308 () (_ BitVec 32) (bvadd ref!305 ref!301)) ; Extended part - ADD operation
+(define-fun ref!317 () (_ BitVec 16) (concat ref!271 ref!269)) ; Extended part - Extended part - MOVZX operation
+(define-fun ref!318 () (_ BitVec 32) ((_ zero_extend 16) ref!317)) ; Extended part - MOVZX operation
+(define-fun ref!321 () (_ BitVec 32) (bvsub ref!308 ref!318)) ; Extended part - SUB operation
+(define-fun ref!330 () (_ BitVec 16) (concat ref!283 ref!281)) ; Extended part - Extended part - MOVZX operation
+(define-fun ref!331 () (_ BitVec 32) ((_ zero_extend 16) ref!330)) ; Extended part - MOVZX operation
+(define-fun ref!334 () (_ BitVec 32) (bvsub ref!321 ref!331)) ; Extended part - SUB operation
+(define-fun ref!343 () (_ BitVec 32) (bvsub ref!334 (_ bv7380 32))) ; CMP operation
+(assert (= (ite (= ref!343 (_ bv0 32)) (_ bv1 1) (_ bv0 1)) (_ bv1 1)))
+```
+
+Now we can compare previous representation with the one from Triton, Triton represent the expression with an AST like the next:
+
+```
+(bvsub (bvsub (bvadd ((_ zero_extend 16) (concat flag_23 flag_22)) ((_ zero_extend 16) (concat flag_17 flag_16))) ((_ zero_extend 16) (concat flag_9 flag_8))) ((_ zero_extend 16) (concat flag_15 flag_14)))
+```
+
+While the input from Z3 can look longer, after talking with Jonathan Salwan (Main author from Triton), it looks like for long expressions Z3 parses faster the SMT expressions than Triton transforms from the AST to the expressions for Z3. So for some challenges where expressions are heavier to load, we can try using the method presented in this part of the post.
+
+Now we need a function that interacts with Z3 library, this will create the symbolic expression to solve, and will generate the symbolic variables and the SSA form for Z3, find a solution for the expression, and in case some solution exists, return it for applying the concrete values to the symbolic variables:
+
+```python
+def myExternalSolver(ctx, node, addr=None, debug=False):
+    import z3
+    expr = ctx.newSymbolicExpression(node, "Custom for Solver")
+    varSyntax = getVarSyntax(ctx)
+    ssa = getSSA(ctx, expr)
+
+    smtFormat = '(set-logic QF_BV) %s %s (check-sat) (get-model)' % (
+        varSyntax, ssa)
+
+    c = z3.Context()
+    s = z3.Solver(ctx=c)
+    s.add(z3.parse_smt2_string(smtFormat, ctx=c))
+    if addr:
+        print('[+] Solving condition at %#x' % (addr))
+    if s.check() == z3.sat:
+        ret = dict()
+        model = s.model()
+        for x in model:
+            if not "ref" in str(x):
+                ret.update(
+                    {int(str(x).split('_')[1], 10): int(str(model[x]), 10)})
+            else:
+                continue
+        return ret
+    else:
+        print('[-] unsat :(')
+        sys.exit(-1)
+    return
+```
+
+In the previous code snippet, we create a symbolic expression from one of the parameters, this expression will be used to generate the SSA form. Then a string is created with the symbolic variables and the SSA expressions. This string in SMT format will be the input for Z3, for doing that we call `parse_smt2_string`, that will parse the string, and will generate the necessary constraints and expressions for Z3, and then we check if a solution can be found (comparison with `z3.sat`), in case a solution is found, we will retrieve the model that solves the system. I have found that sometimes the solution for the system includes the `ref!...` used as reference of the operation or reference of a symbolic variable in Z3, and when parsing the output the function will crash, since we find concrete values for symbolic variables, we will just skip them. In case of a symbolic variable, we will retrieve the name of the symbolic variable and a concrete value that solves the model.
+
+
+Now, since we modified the solver function, we need to modify also the emulation function. This time we will just use a list to keep the addresses of the comparisons, and we will apply the check after processing the instruction, not before. Then we have the next emulation code:
+
+```python
+
+def emulate(ctx, pc):
+
+    # This structure will be used for applying the constraints in certain
+    # addresses from the program, give a register to apply the constraint
+    # and the value used during the comparison.
+    check_register_value = [
+        FIRST_CONDITIONAL,
+        SECOND_CONDITIONAL,
+        THIRD_CONDITIONAL,
+        FOURTH_CONDITIONAL,
+        FIFTH_CONDITIONAL,
+    ]
+
+    # Structure used to jump over the decryption loops which are
+    # not useful for the analysis
+    loop_address_dest = [
+        [FIRST_LOOP, 0x0000141d],
+        [SECOND_LOOP, 0x00001483]
+    ]
+
+    # emulation loop
+    while pc:
+
+        # print("[-] Running instruction at address: 0x%08X" % (pc))
+        opcodes = ctx.getConcreteMemoryAreaValue(pc, 16)
+        instruction = Instruction(pc, opcodes)
+        
+        # Code for stepping out code that is not necessary
+        # to be executed
+
+        # here avoid the loops and the functions that
+        # are not implemented
+        ...
+
+        # process the instruction
+        ret = ctx.processing(instruction)
+        # if HALT, finish the execution
+        if instruction.getType() == OPCODE.X86.HLT:
+            break
+
+        # conditions
+        if pc in check_register_value:
+            print("Checking at address: 0x%08X" % (val[0]))
+            zf = ctx.getSymbolicRegister(ctx.registers.zf).getAst()
+            ast = ctx.getAstContext()
+            pco = ctx.getPathPredicate()
+            model = myExternalSolver(ctx, zf == 1, pc)
+            for k, v in list(model.items()):
+                ctx.setConcreteVariableValue(ctx.getSymbolicVariable(k), v)
+
+        # solve the equation and retrieve the whole Password
+        if pc == 0x0000149b:
+            # in this case provide True for solving the expression
+            ast = ctx.getAstContext()
+            pco = ctx.getPathPredicate()
+            print("Checking final at address: 0x%08X" % (pc))
+            mod = myExternalSolver(ctx, ast.land(
+                [pco] +
+                [ast.variable(ctx.getSymbolicVariable(x)) >= 0x20 for x in range(0, 0x18)] +
+                [ast.variable(ctx.getSymbolicVariable(x)) <= 0x7e for x in range(0, 0x18)] +
+                [ast.variable(ctx.getSymbolicVariable(x)) !=
+                 0x00 for x in range(0, 0x18)]
+            ))
+            serial = str()
+            for k, v in sorted(mod.items()):
+                serial += chr(v)
+            print("PASSWORD = %s" % (serial))
+            return
+
+        # apply one of the handlers that are not provided by
+        # Triton
+        hookingHandler(ctx)
+
+        # Next
+        pc = ctx.getConcreteRegisterValue(ctx.registers.rip)
+```
+
+If we find one of the addresses from the comparisons, we will call the external solver, giving as a symbolic expression the AST that is set in the `ZF` (zero flag) after the comparison, that must be equal to the value 1. This function will return symbolic variables and concrete values that solves the expression. We will apply them as concrete values. And we will continue the execution.
+After that we have a comparison, that is already out of the different checks, it will be here we we will solve the final expression. In order to solve the final expression and obtain the correct values, we will retrieve as we did in the previous solution, the `PathPredicate`, and we will include also three constraints for our symbolic variables to be ASCII strings. Once we find a solution, this time we will obtain all the values for the symbolic variables. And with this, the correct password.
+
+Next we can see the output with this script:
+
+<figure>
+<a href="/assets/images/hex-ray-challenge/28.png"><img src="/assets/images/hex-ray-challenge/28.png"></a>
+<figcaption>Using Z3 as an external tool for solving the challenge.</figcaption>
+</figure>
+
+You can find the whole script [here](https://github.com/Fare9/My-Symbolic-Execution/blob/master/IDA-challenge/free-madame-de-maintenon-challenge/triton_solver_z3.py)
+
+
 ## Conclusions
 
 I have found the challenge interesting and at the end not so difficult. From a reverse engineering point of view the binary is not hard to analyze, but the problem would be looking for solutions manually, or using brute force, or using other tools manually (we can solve this challenge writing a script for Z3 but this would take longer).
