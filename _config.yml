@@ -46,7 +46,7 @@ twitter:
 author:
   name          : *name
   avatar        : "/assets/images/fare9.jpeg"
-  bio           : "PhD Student and Researcher at University Carlos III of Madrid"
+  bio           : "Compiler Engineer at Quarkslab"
   location      : "Madrid, Spain"
   links:
     - label: "Twitter"
