@@ -18,18 +18,22 @@ feature_row:
     #url: "/docs/configuration/"
     #btn_class: "btn--primary"
     #btn_label: "Learn more"
+  - image_path: /assets/images/java-bytecode.png
+    alt: "Java Bytecode"
+    title: "Java Bytecode Manipulation"
+    excerpt: "Currently I work as Java Compiler Engineer so Java bytecode manipulation is of my main tasks in my work"
+  - image_path: /assets/images/binja.png
+    alt: "Binary Ninja"
+    title: "Reverse Engineering"
+    excerpt: "Learning about the working internals of the software is a key piece for finding errors, and improving it."
+    #url: "/docs/license/"
+    #btn_class: "btn--primary"
+    #btn_label: "Learn more"  
   - image_path: /assets/images/ISO_C++_Logo.svg.png
     alt: "C++ Logo"
     title: "C++ Programming"
     excerpt: "I think C++ is very useful and powerful so it is the programming language I try to use on my projects."
     #url: "/docs/layouts/"
-    #btn_class: "btn--primary"
-    #btn_label: "Learn more"  
-  - image_path: /assets/images/ida.png
-    alt: "IDA"
-    title: "Reverse Engineering"
-    excerpt: "Learning about the working internals of the software is a key piece for finding errors, and improving it."
-    #url: "/docs/license/"
     #btn_class: "btn--primary"
     #btn_label: "Learn more"    
 ---
