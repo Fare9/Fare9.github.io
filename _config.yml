@@ -29,8 +29,8 @@ twitter_username: Farenain
 github_username:  Fare9
 
 # Build settings
-#theme: minimal-mistakes-jekyll
-remote_theme: "mmistakes/minimal-mistakes@4.24.0"
+theme: minimal-mistakes-jekyll
+#remote_theme: "mmistakes/minimal-mistakes@4.24.0"
 
 minimal_mistakes_skin: "dark" # "air", "aqua", "contrast", "dark", "dirt", "neon", "mint", "plum", "sunrise"
 
@@ -45,7 +45,7 @@ twitter:
 # Site Author
 author:
   name          : *name
-  avatar        : "/assets/images/fare9.jpeg"
+  avatar        : "/assets/images/fare9.jpg"
   bio           : "Compiler Engineer at Quarkslab"
   location      : "Madrid, Spain"
   links:
