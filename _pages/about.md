@@ -17,7 +17,7 @@ When I'm not in front of my laptop, I enjoy playing video games, reading manga, 
 
 I really love various Asian cultures, but my main interest is on Japanese culture since a young age. I frequently listen to music from China, Korea, or Japan (I've included a list at the bottom of this page). Occasionally, I try cooking Japanese cuisine at home. Currently, I'm dedicated to learning the Japanese language and hold a JLPT Noken 5 certification.
 
-Other hobbies I enjoy include hiking with friends, watching films or series, and embarking on trips with my nice girlfriend.
+Other hobbies I enjoy include hiking with friends and watching films or series.
 
 ## Music
 
